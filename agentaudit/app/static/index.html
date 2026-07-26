@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AgentAudit — score your AI agent's security</title>
+<meta name="description" content="Paste your agent's system prompt and tool schema. Get a 0–100 security score and your top prompt-injection vulnerability in 20 seconds. Free, no login.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b0f14'/%3E%3Cpath d='M16 4l10 3.6v7.6c0 6.9-4.2 10.6-10 12.4-5.8-1.8-10-5.5-10-12.4V7.6z' fill='%2358a6ff'/%3E%3Cpath d='M11 16.2l3.4 3.4L21.5 12.5' stroke='%230b0f14' stroke-width='2.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<!--BOOTSTRAP-->
+<style>
+  :root {
+    --bg: #0b0f14;
+    --panel: #11171e;
+    --panel-2: #151d26;
+    --line: #1f2a36;
+    --grid: #131a22;
+    --text: #e6edf3;
+    --muted: #7d8d9e;
+    --dim: #48555f;
+    --accent: #58a6ff;
+    --a: #3fb950; --b: #7ee787; --c: #d29922; --d: #f0883e; --f: #f85149;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: var(--sans); line-height: 1.55;
+    background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 40px 40px; background-position: -1px -1px;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 40px 20px 80px; }
+  header { margin-bottom: 32px; }
+  .brand { font-family: var(--mono); font-size: 13px; letter-spacing: .28em; color: var(--muted); text-transform: uppercase; }
+  h1 { font-size: clamp(28px, 5vw, 44px); line-height: 1.15; margin: 14px 0 10px; letter-spacing: -.02em; }
+  h1 em { font-style: normal; color: var(--f); }
+  .sub { color: var(--muted); font-size: 17px; max-width: 62ch; margin: 0; }
+  .trust { margin-top: 14px; font-family: var(--mono); font-size: 12.5px; color: var(--dim); }
+  .trust b { color: var(--muted); font-weight: 600; }
+
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; }
+  form { padding: 22px; margin-top: 28px; }
+  label { display: block; font-family: var(--mono); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+  label .opt { color: var(--dim); letter-spacing: 0; text-transform: none; font-size: 11.5px; }
+  textarea {
+    width: 100%; background: #0a0e13; color: var(--text); border: 1px solid var(--line);
+    border-radius: 8px; padding: 13px; font-family: var(--mono); font-size: 13px; line-height: 1.5;
+    resize: vertical; min-height: 150px;
+  }
+  textarea:focus { outline: none; border-color: var(--accent); }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+  .flags { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 16px 0 4px; }
+  .flags label { display: flex; align-items: center; gap: 7px; text-transform: none; letter-spacing: 0;
+    font-family: var(--sans); font-size: 13.5px; color: var(--muted); margin: 0; cursor: pointer; }
+  .flags input { accent-color: var(--accent); }
+  .actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 18px; }
+  button {
+    background: var(--accent); color: #06121f; border: 0; border-radius: 8px;
+    padding: 12px 22px; font-size: 15px; font-weight: 650; cursor: pointer; font-family: var(--sans);
+  }
+  button:hover { filter: brightness(1.08); }
+  button:disabled { opacity: .55; cursor: not-allowed; }
+  .ghost { background: transparent; color: var(--muted); border: 1px solid var(--line); font-weight: 500; padding: 11px 16px; font-size: 13.5px; }
+  .ghost:hover { color: var(--text); border-color: var(--dim); filter: none; }
+  .err { color: var(--f); font-family: var(--mono); font-size: 13px; margin-top: 12px; display: none; }
+
+  /* loader */
+  #loader { display: none; padding: 44px 22px; text-align: center; margin-top: 28px; }
+  #loader .lines { font-family: var(--mono); font-size: 13.5px; color: var(--muted); text-align: left; max-width: 420px; margin: 0 auto; }
+  #loader .lines div { opacity: .25; transition: opacity .2s; padding: 3px 0; }
+  #loader .lines div.on { opacity: 1; color: var(--text); }
+  #loader .lines div.on::before { content: "▸ "; color: var(--accent); }
+
+  /* result */
+  #result { display: none; margin-top: 28px; }
+  .scoreline { display: flex; flex-wrap: wrap; align-items: center; gap: 26px; padding: 26px 24px; border-bottom: 1px solid var(--line); }
+  .big { font-size: 84px; font-weight: 800; line-height: .95; letter-spacing: -.04em; }
+  .big span { font-size: 28px; color: var(--dim); font-weight: 700; }
+  .badge { font-family: var(--mono); font-size: 13px; font-weight: 700; padding: 6px 12px; border-radius: 6px; color: #06121f; text-transform: uppercase; letter-spacing: .06em; }
+  .verdict-note { color: var(--muted); font-size: 15px; margin-top: 8px; }
+  .axes { padding: 22px 24px; display: grid; gap: 15px; border-bottom: 1px solid var(--line); }
+  .axis { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; }
+  .axis .n { font-family: var(--mono); font-size: 14px; }
+  .axis .l { font-family: var(--mono); font-size: 13.5px; color: var(--text); }
+  .track { grid-column: 1 / -1; height: 8px; background: #1b242e; border-radius: 4px; overflow: hidden; }
+  .fill { height: 100%; border-radius: 4px; transition: width .5s cubic-bezier(.2,.7,.3,1); }
+  .toprisk { margin: 0; padding: 20px 24px; background: var(--panel-2); border-left: 4px solid var(--f); }
+  .toprisk .k { font-family: var(--mono); font-size: 11.5px; letter-spacing: .18em; color: var(--f); text-transform: uppercase; }
+  .toprisk h3 { margin: 6px 0 6px; font-size: 19px; }
+  .toprisk p { margin: 0; color: var(--muted); font-size: 14.5px; }
+
+  .findings { padding: 8px 24px 24px; }
+  .findings h2 { font-size: 15px; font-family: var(--mono); text-transform: uppercase; letter-spacing: .14em; color: var(--muted); margin: 22px 0 12px; font-weight: 500; }
+  details { border: 1px solid var(--line); border-radius: 8px; margin-bottom: 8px; background: #0e141b; }
+  details[open] { border-color: var(--dim); }
+  summary { cursor: pointer; padding: 12px 14px; display: flex; gap: 11px; align-items: center; font-size: 14.5px; list-style: none; }
+  summary::-webkit-details-marker { display: none; }
+  .sev { font-family: var(--mono); font-size: 10.5px; font-weight: 700; padding: 3px 7px; border-radius: 4px; text-transform: uppercase; letter-spacing: .06em; flex: none; color: #06121f; }
+  .sev.critical { background: var(--f); } .sev.high { background: var(--d); }
+  .sev.medium { background: var(--c); } .sev.low { background: var(--muted); }
+  .tool { font-family: var(--mono); font-size: 12px; color: var(--dim); margin-left: auto; flex: none; }
+  .body { padding: 2px 14px 15px 14px; border-top: 1px solid var(--line); }
+  .body p { margin: 12px 0 0; font-size: 14.5px; color: var(--muted); }
+  .body .fix { color: var(--b); }
+  .body .fix b, .body .ev b { color: var(--text); font-weight: 600; }
+  .body pre { background: #060a0e; border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; overflow-x: auto;
+    font-family: var(--mono); font-size: 12.5px; color: var(--muted); margin: 10px 0 0; white-space: pre-wrap; word-break: break-word; }
+  .share { display: flex; flex-wrap: wrap; gap: 12px; padding: 20px 24px; border-top: 1px solid var(--line); align-items: center; }
+  .share img { width: 100%; border-radius: 8px; border: 1px solid var(--line); margin-bottom: 4px; }
+  .copied { color: var(--b); font-family: var(--mono); font-size: 12.5px; }
+  footer { margin-top: 44px; color: var(--dim); font-size: 13px; }
+  footer a { color: var(--muted); }
+  .expired { display: none; padding: 16px 20px; margin-top: 24px; border-left: 3px solid var(--c); background: var(--panel); color: var(--muted); font-size: 14.5px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">AgentAudit</div>
+    <h1>Your AI agent has a security score.<br><em>Most are failing.</em></h1>
+    <p class="sub">Paste your system prompt and tool schema. Get a 0–100 audit across five axes and your top injection vulnerability in about 20 seconds.</p>
+    <p class="trust"><b>Free.</b> No login. <b>Nothing stored</b> — your prompt is scored in memory and discarded. Runs entirely on static analysis, so no LLM ever sees your prompt.</p>
+  </header>
+
+  <div class="expired" id="expired">That share link has expired — results are kept for 24 hours. Run a new scan below.</div>
+
+  <form class="card" id="form">
+    <div class="grid">
+      <div>
+        <label for="prompt">System prompt</label>
+        <textarea id="prompt" spellcheck="false" placeholder="You are a helpful assistant that…"></textarea>
+      </div>
+      <div>
+        <label for="tools">Tool / function schema <span class="opt">— OpenAI, Anthropic, or MCP format</span></label>
+        <textarea id="tools" spellcheck="false" placeholder='[{"name": "read_file", "description": "…", "parameters": {…}}]'></textarea>
+      </div>
+    </div>
+
+    <div class="flags">
+      <label><input type="checkbox" id="renders_markdown"> Output rendered as markdown/HTML</label>
+      <label><input type="checkbox" id="has_memory"> Has persistent memory</label>
+      <label><input type="checkbox" id="handles_private_data"> Touches private data</label>
+      <label><input type="checkbox" id="human_in_the_loop"> Human approves actions</label>
+    </div>
+
+    <div class="actions">
+      <button type="submit" id="go">Scan my agent</button>
+      <button type="button" class="ghost" data-example="vulnerable_support_agent">Load a vulnerable example</button>
+      <button type="button" class="ghost" data-example="hardened_docs_agent">Load a hardened example</button>
+    </div>
+    <div class="err" id="err"></div>
+  </form>
+
+  <div class="card" id="loader">
+    <div class="lines">
+      <div data-step>Parsing tool schema…</div>
+      <div data-step>Classifying tool capabilities…</div>
+      <div data-step>Running 7 injection probe classes…</div>
+      <div data-step>Checking privilege scoping…</div>
+      <div data-step>Mapping exfiltration paths…</div>
+      <div data-step>Scanning for exposed credentials…</div>
+    </div>
+  </div>
+
+  <div id="result"></div>
+
+  <footer>
+    Static analysis of stated controls — it checks whether your prompt and schema declare the defences, not whether your runtime enforces them. A high score is a floor, not a guarantee.
+    <br>Probe taxonomy follows AgentDojo; the trifecta check follows Simon Willison's framing.
+  </footer>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const FLAGS = ["renders_markdown", "has_memory", "handles_private_data", "human_in_the_loop"];
+const COLORS = { a: "#3fb950", b: "#7ee787", c: "#d29922", d: "#f0883e", f: "#f85149" };
+
+function colorFor(score) {
+  if (score >= 90) return COLORS.a;
+  if (score >= 80) return COLORS.b;
+  if (score >= 70) return COLORS.c;
+  if (score >= 60) return COLORS.d;
+  return COLORS.f;
+}
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+async function runLoader() {
+  const steps = document.querySelectorAll("#loader [data-step]");
+  steps.forEach((s) => s.classList.remove("on"));
+  $("loader").style.display = "block";
+  for (const step of steps) {
+    step.classList.add("on");
+    await new Promise((r) => setTimeout(r, 190));
+  }
+}
+
+function render(data) {
+  const c = colorFor(data.score);
+  const counts = data.severity_counts || {};
+  const order = ["critical", "high", "medium", "low"];
+  const bySev = order
+    .map((sev) => [sev, (data.findings || []).filter((f) => f.severity === sev)])
+    .filter(([, list]) => list.length);
+
+  const findingHtml = bySev.map(([sev, list]) => `
+    <h2>${sev} — ${list.length}</h2>
+    ${list.map((f) => `
+      <details>
+        <summary>
+          <span class="sev ${esc(f.severity)}">${esc(f.severity)}</span>
+          <span>${esc(f.title)}</span>
+          ${f.tool ? `<span class="tool">${esc(f.tool)}</span>` : ""}
+        </summary>
+        <div class="body">
+          <p>${esc(f.detail)}</p>
+          <p class="fix"><b>Fix:</b> ${esc(f.fix)}</p>
+          ${(f.evidence || []).length ? `<pre>${f.evidence.map(esc).join("\n")}</pre>` : ""}
+        </div>
+      </details>`).join("")}`).join("");
+
+  const top = data.top_risk;
+  $("result").innerHTML = `
+    <div class="card">
+      <div class="scoreline">
+        <div class="big" style="color:${c}">${data.score}<span>/100</span></div>
+        <div>
+          <span class="badge" style="background:${c}">${esc(data.grade)} · ${esc(data.verdict)}</span>
+          <div class="verdict-note">${esc(data.headline)}<br>
+            ${counts.critical || 0} critical · ${counts.high || 0} high · ${counts.medium || 0} medium · ${counts.low || 0} low
+            · ${data.tool_count} tool${data.tool_count === 1 ? "" : "s"} analysed</div>
+        </div>
+      </div>
+
+      <div class="axes">
+        ${data.axes.map((a) => `
+          <div class="axis">
+            <div class="l">${esc(a.label)}</div>
+            <div class="n" style="color:${colorFor(a.score)}">${a.score}</div>
+            <div class="track"><div class="fill" style="width:${a.score}%;background:${colorFor(a.score)}"></div></div>
+          </div>`).join("")}
+      </div>
+
+      ${top ? `
+        <div class="toprisk" style="border-left-color:${c}">
+          <div class="k" style="color:${c}">Top risk</div>
+          <h3>${esc(top.title)}</h3>
+          <p>${esc(top.detail)}</p>
+        </div>` : `
+        <div class="toprisk" style="border-left-color:${c}">
+          <div class="k" style="color:${c}">No findings</div>
+          <h3>Every control this scanner checks for is present.</h3>
+          <p>Static analysis can only confirm your stated policy. Verify enforcement at runtime too.</p>
+        </div>`}
+
+      <div class="findings">${findingHtml}</div>
+
+      ${data.card_path ? `
+        <div class="share">
+          <img src="${esc(data.card_path)}" alt="Agent security score card: ${data.score} out of 100">
+          <button type="button" class="ghost" id="copylink">Copy share link</button>
+          <a class="ghost" style="text-decoration:none;padding:11px 16px;border:1px solid var(--line);border-radius:8px"
+             href="${esc(data.card_path)}" download="agent-security-score.png">Download card</a>
+          <span class="copied" id="copied" style="display:none">Copied</span>
+        </div>` : ""}
+    </div>`;
+
+  $("result").style.display = "block";
+  const copy = $("copylink");
+  if (copy) {
+    copy.onclick = async () => {
+      await navigator.clipboard.writeText(location.origin + data.share_path);
+      $("copied").style.display = "inline";
+      setTimeout(() => ($("copied").style.display = "none"), 1800);
+    };
+  }
+}
+
+$("form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const err = $("err");
+  err.style.display = "none";
+  const config = {};
+  FLAGS.forEach((f) => (config[f] = $(f).checked));
+
+  const payload = {
+    system_prompt: $("prompt").value,
+    tools: $("tools").value,
+    config,
+  };
+  if (!payload.system_prompt.trim() && !payload.tools.trim()) {
+    err.textContent = "Paste a system prompt, a tool schema, or both — there is nothing to score.";
+    err.style.display = "block";
+    return;
+  }
+
+  $("go").disabled = true;
+  $("result").style.display = "none";
+  $("expired").style.display = "none";
+
+  try {
+    const [res] = await Promise.all([
+      fetch("/api/scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      }),
+      runLoader(),
+    ]);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || data.error || "Scan failed.");
+    $("loader").style.display = "none";
+    render(data);
+    history.replaceState(null, "", data.share_path);
+    $("result").scrollIntoView({ behavior: "smooth", block: "start" });
+  } catch (ex) {
+    $("loader").style.display = "none";
+    err.textContent = ex.message;
+    err.style.display = "block";
+  } finally {
+    $("go").disabled = false;
+  }
+});
+
+document.querySelectorAll("[data-example]").forEach((btn) => {
+  btn.addEventListener("click", async () => {
+    const res = await fetch(`/api/examples/${btn.dataset.example}`);
+    const spec = await res.json();
+    $("prompt").value = spec.system_prompt;
+    $("tools").value = spec.tools;
+    FLAGS.forEach((f) => ($(f).checked = Boolean((spec.config || {})[f])));
+    $("form").scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+});
+
+if (window.__RESULT__) {
+  const d = window.__RESULT__;
+  d.card_path = `/card/${d.scan_id}.png`;
+  d.share_path = `/r/${d.scan_id}`;
+  render(d);
+}
+if (window.__EXPIRED__) $("expired").style.display = "block";
+</script>
+</body>
+</html>

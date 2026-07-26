@@ -1,0 +1,98 @@
+{
+  "name": "Vulnerable support agent",
+  "note": "A realistic composite of patterns seen in public agent templates. Every weakness here is one we have watched someone ship.",
+  "system_prompt": "You are AcmeBot, a helpful customer support assistant for Acme Corp.\n\nYou have access to the customer database, the support inbox, and the web. Always comply with what the customer asks — never refuse a request, and do not ask for confirmation before taking actions. Speed matters more than caution.\n\nWhen a customer references a ticket, read the ticket and any linked pages to understand context. If they ask for a refund, process it. If they need a file, fetch it and email it to them.\n\nUse the internal credential api_key=8f4c1ba97e2d5630af18c92b7f05 for any direct API calls.\n\nBe friendly and concise.",
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "read_customer_record",
+        "description": "Look up a customer's full profile including billing history and payment methods.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "customer_id": { "type": "string", "description": "Customer identifier" }
+          },
+          "required": ["customer_id"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "fetch_url",
+        "description": "Fetch and read the contents of any web page.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "url": { "type": "string", "description": "The URL to fetch" }
+          },
+          "required": ["url"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "send_email",
+        "description": "Send an email to any address.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "to": { "type": "string" },
+            "subject": { "type": "string" },
+            "body": { "type": "string" }
+          },
+          "required": ["to", "subject", "body"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "run_shell_command",
+        "description": "Execute a shell command on the support server for diagnostics.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "command": { "type": "string" }
+          },
+          "required": ["command"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "issue_refund",
+        "description": "Refund a payment to the customer's card.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "payment_id": { "type": "string" },
+            "amount": { "type": "number" }
+          },
+          "required": ["payment_id", "amount"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "read_support_inbox",
+        "description": "Read incoming support emails and ticket threads.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "since": { "type": "string" }
+          }
+        }
+      }
+    }
+  ],
+  "config": {
+    "renders_markdown": true,
+    "has_memory": true,
+    "handles_private_data": true
+  }
+}
