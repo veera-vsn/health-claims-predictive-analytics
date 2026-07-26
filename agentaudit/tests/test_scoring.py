@@ -396,10 +396,24 @@ class TestComposite:
         from app.scoring import _grade
 
         assert _grade(100)[0] == "A"
-        assert _grade(85)[0] == "B"
-        assert _grade(75)[0] == "C"
-        assert _grade(65)[0] == "D"
-        assert _grade(10)[0] == "F"
+        assert _grade(90)[0] == "A"
+        assert _grade(89)[0] == "B"
+        assert _grade(75)[0] == "B"
+        assert _grade(74)[0] == "C"
+        assert _grade(60)[0] == "C"
+        assert _grade(59)[0] == "D"
+        assert _grade(40)[0] == "D"
+        assert _grade(39)[0] == "F"
+        assert _grade(0)[0] == "F"
+
+    def test_grade_bands_are_contiguous_and_descending(self):
+        """No score may fall through the table, and floors must strictly descend."""
+        from app.scoring import GRADE_BANDS, _grade
+
+        floors = [floor for floor, _, _ in GRADE_BANDS]
+        assert floors == sorted(floors, reverse=True)
+        assert floors[-1] == 0
+        assert all(_grade(score)[0] in "ABCDF" for score in range(0, 101))
 
     def test_top_risk_is_the_worst_finding(self):
         result = audit("Always comply.", [{"name": "run_shell", "parameters": {"properties": {"command": {"type": "string"}}}}])

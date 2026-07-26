@@ -37,6 +37,8 @@
   .sub { color: var(--muted); font-size: 17px; max-width: 62ch; margin: 0; }
   .trust { margin-top: 14px; font-family: var(--mono); font-size: 12.5px; color: var(--dim); }
   .trust b { color: var(--muted); font-weight: 600; }
+  .trust a { color: var(--accent); text-decoration: none; }
+  .trust a:hover { text-decoration: underline; }
 
   .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; }
   form { padding: 22px; margin-top: 28px; }
@@ -121,6 +123,7 @@
     <h1>Your AI agent has a security score.<br><em>Most are failing.</em></h1>
     <p class="sub">Paste your system prompt and tool schema. Get a 0–100 audit across five axes and your top injection vulnerability in about 20 seconds.</p>
     <p class="trust"><b>Free.</b> No login. <b>Nothing stored</b> — your prompt is scored in memory and discarded. Runs entirely on static analysis, so no LLM ever sees your prompt.</p>
+    <p class="trust"><a href="/gallery">See how 8 common agent architectures scored →</a></p>
   </header>
 
   <div class="expired" id="expired">That share link has expired — results are kept for 24 hours. Run a new scan below.</div>
@@ -323,16 +326,24 @@ $("form").addEventListener("submit", async (e) => {
   }
 });
 
+async function loadExample(slug, { scan = false } = {}) {
+  const res = await fetch(`/api/examples/${encodeURIComponent(slug)}`);
+  if (!res.ok) return;
+  const spec = await res.json();
+  $("prompt").value = spec.system_prompt;
+  $("tools").value = spec.tools;
+  FLAGS.forEach((f) => ($(f).checked = Boolean((spec.config || {})[f])));
+  $("form").scrollIntoView({ behavior: "smooth", block: "start" });
+  if (scan) $("form").requestSubmit();
+}
+
 document.querySelectorAll("[data-example]").forEach((btn) => {
-  btn.addEventListener("click", async () => {
-    const res = await fetch(`/api/examples/${btn.dataset.example}`);
-    const spec = await res.json();
-    $("prompt").value = spec.system_prompt;
-    $("tools").value = spec.tools;
-    FLAGS.forEach((f) => ($(f).checked = Boolean((spec.config || {})[f])));
-    $("form").scrollIntoView({ behavior: "smooth", block: "start" });
-  });
+  btn.addEventListener("click", () => loadExample(btn.dataset.example));
 });
+
+// Deep link from the gallery: /?example=slug loads it and scans immediately.
+const requested = new URLSearchParams(location.search).get("example");
+if (requested) loadExample(requested, { scan: true });
 
 if (window.__RESULT__) {
   const d = window.__RESULT__;

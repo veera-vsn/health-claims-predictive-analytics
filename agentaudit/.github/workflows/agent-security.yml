@@ -1,0 +1,33 @@
+# Gate a build on your agent's security score.
+# Copy this into your own repo and point it at your agent spec files.
+name: Agent security
+
+on:
+  pull_request:
+    paths: ["agents/**", "**/system_prompt*", "**/tools*.json"]
+  push:
+    branches: [main]
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install AgentAudit
+        run: pip install -r agentaudit/requirements.txt
+
+      - name: Score every agent config
+        working-directory: agentaudit
+        run: |
+          status=0
+          for spec in ../agents/*.json; do
+            echo "::group::$(basename "$spec")"
+            python -m app.cli "$spec" --min-score 70 --fail-on critical --no-color || status=1
+            echo "::endgroup::"
+          done
+          exit $status

@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent security leaderboard — AgentAudit</title>
+<meta name="description" content="Common AI agent architectures, scored for prompt-injection and privilege risk. Most are failing.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b0f14'/%3E%3Cpath d='M16 4l10 3.6v7.6c0 6.9-4.2 10.6-10 12.4-5.8-1.8-10-5.5-10-12.4V7.6z' fill='%2358a6ff'/%3E%3Cpath d='M11 16.2l3.4 3.4L21.5 12.5' stroke='%230b0f14' stroke-width='2.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg: #0b0f14; --panel: #11171e; --line: #1f2a36; --grid: #131a22;
+    --text: #e6edf3; --muted: #7d8d9e; --dim: #48555f; --accent: #58a6ff;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text); font-family: var(--sans); line-height: 1.55;
+    background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 40px 40px; background-position: -1px -1px;
+  }
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 40px 20px 80px; }
+  .brand { font-family: var(--mono); font-size: 13px; letter-spacing: .28em; color: var(--muted); text-transform: uppercase; }
+  .brand a { color: inherit; text-decoration: none; }
+  .brand a:hover { color: var(--text); }
+  h1 { font-size: clamp(26px, 4.5vw, 40px); line-height: 1.15; margin: 14px 0 10px; letter-spacing: -.02em; }
+  .sub { color: var(--muted); font-size: 16.5px; max-width: 68ch; margin: 0 0 6px; }
+  .meta { font-family: var(--mono); font-size: 12.5px; color: var(--dim); margin-top: 12px; }
+
+  .summary { display: flex; flex-wrap: wrap; gap: 10px; margin: 26px 0 8px; }
+  .chip { font-family: var(--mono); font-size: 12.5px; padding: 7px 12px; border: 1px solid var(--line);
+          border-radius: 999px; color: var(--muted); background: var(--panel); }
+  .chip b { color: var(--text); }
+
+  .row { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; margin-top: 14px; }
+  .head { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+  .rank { font-family: var(--mono); font-size: 12.5px; color: var(--dim); flex: none; }
+  .score { font-size: 34px; font-weight: 800; letter-spacing: -.03em; line-height: 1; flex: none; }
+  .score span { font-size: 14px; color: var(--dim); font-weight: 700; }
+  .grade { font-family: var(--mono); font-size: 11px; font-weight: 700; padding: 4px 8px; border-radius: 5px;
+           color: #06121f; text-transform: uppercase; letter-spacing: .07em; flex: none; }
+  .name { font-size: 18px; font-weight: 650; }
+  .arch { color: var(--muted); font-size: 14.5px; margin: 6px 0 0; }
+  .note { color: #6d7d8d; font-size: 13.5px; margin: 8px 0 0; max-width: 78ch; }
+  .risk { font-family: var(--mono); font-size: 13px; margin: 12px 0 0; padding-left: 11px; border-left: 3px solid; }
+  .risk b { color: var(--muted); font-weight: 500; }
+
+  .bars { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 15px; }
+  @media (max-width: 640px) { .bars { grid-template-columns: repeat(2, 1fr); } }
+  .b .lab { font-family: var(--mono); font-size: 10.5px; color: var(--dim); text-transform: uppercase; letter-spacing: .07em; }
+  .b .track { height: 6px; background: #1b242e; border-radius: 3px; overflow: hidden; margin-top: 5px; }
+  .b .fill { height: 100%; border-radius: 3px; }
+  .foot { display: flex; gap: 12px; align-items: center; margin-top: 16px; flex-wrap: wrap; }
+  .btn { background: transparent; color: var(--muted); border: 1px solid var(--line); border-radius: 8px;
+         padding: 8px 14px; font-size: 13.5px; cursor: pointer; font-family: var(--sans); text-decoration: none; }
+  .btn:hover { color: var(--text); border-color: var(--dim); }
+  .counts { font-family: var(--mono); font-size: 12px; color: var(--dim); }
+  footer { margin-top: 44px; color: var(--dim); font-size: 13px; max-width: 78ch; }
+  footer a { color: var(--muted); }
+  .loading { color: var(--muted); font-family: var(--mono); font-size: 14px; padding: 30px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand"><a href="/">← AgentAudit</a></div>
+  <h1>Most agents are failing.</h1>
+  <p class="sub">Common agent architectures, scored by the same static analysis you can run on your own config.
+     These are reference implementations of widely-published patterns — not scraped from anyone's production system.</p>
+  <p class="meta">Ranked worst first · scored deterministically · no LLM involved</p>
+
+  <div class="summary" id="summary"></div>
+  <div id="rows"><div class="loading">Scoring architectures…</div></div>
+
+  <footer>
+    Every score here is reproducible: <code>python -m app.cli examples/&lt;slug&gt;.json</code>.
+    The scanner reads stated controls, not runtime enforcement — a high score is a floor, not a guarantee.
+    <br><a href="/">Scan your own agent →</a>
+  </footer>
+</div>
+
+<script>
+const COLORS = { a: "#3fb950", b: "#7ee787", c: "#d29922", d: "#f0883e", f: "#f85149" };
+const colorFor = (s) => s >= 90 ? COLORS.a : s >= 75 ? COLORS.b : s >= 60 ? COLORS.c : s >= 40 ? COLORS.d : COLORS.f;
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+fetch("/api/examples").then((r) => r.json()).then((list) => {
+  const failing = list.filter((e) => e.score < 60).length;
+  const median = [...list].sort((a, b) => a.score - b.score)[Math.floor(list.length / 2)].score;
+  document.getElementById("summary").innerHTML = `
+    <div class="chip"><b>${list.length}</b> architectures scored</div>
+    <div class="chip"><b>${failing}</b> below 60</div>
+    <div class="chip">median <b>${median}/100</b></div>
+    <div class="chip"><b>${list.reduce((n, e) => n + (e.severity_counts.critical || 0), 0)}</b> critical findings</div>`;
+
+  document.getElementById("rows").innerHTML = list.map((e, i) => {
+    const c = colorFor(e.score);
+    return `
+    <div class="row">
+      <div class="head">
+        <span class="rank">#${i + 1}</span>
+        <span class="score" style="color:${c}">${e.score}<span>/100</span></span>
+        <span class="grade" style="background:${c}">${esc(e.grade)} · ${esc(e.verdict)}</span>
+        <span class="name">${esc(e.name)}</span>
+      </div>
+      <p class="arch">${esc(e.archetype)}</p>
+      <p class="note">${esc(e.note)}</p>
+      ${e.top_risk ? `<p class="risk" style="border-color:${c}"><b>Top risk:</b> ${esc(e.top_risk)}</p>` : ""}
+      <div class="bars">
+        ${e.axes.map((a) => `
+          <div class="b">
+            <div class="lab">${esc(a.label)}</div>
+            <div class="track"><div class="fill" style="width:${a.score}%;background:${colorFor(a.score)}"></div></div>
+          </div>`).join("")}
+      </div>
+      <div class="foot">
+        <a class="btn" href="/?example=${encodeURIComponent(e.slug)}">Open in scanner</a>
+        <span class="counts">${e.unmitigated_probes} unmitigated injection classes ·
+          ${e.severity_counts.critical || 0} critical · ${e.severity_counts.high || 0} high ·
+          ${e.tool_count} tool${e.tool_count === 1 ? "" : "s"}</span>
+      </div>
+    </div>`;
+  }).join("");
+}).catch(() => {
+  document.getElementById("rows").innerHTML = '<div class="loading">Could not load the gallery.</div>';
+});
+</script>
+</body>
+</html>

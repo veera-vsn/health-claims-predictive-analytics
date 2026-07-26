@@ -143,6 +143,35 @@ class TestExamples:
         assert by_slug["vulnerable_support_agent"]["score"] < 40
         assert by_slug["hardened_docs_agent"]["score"] >= 90
 
+    def test_examples_are_ranked_worst_first(self):
+        scores = [e["score"] for e in client.get("/api/examples").json()]
+        assert scores == sorted(scores)
+
+    def test_gallery_entries_carry_what_the_leaderboard_renders(self):
+        for entry in client.get("/api/examples").json():
+            assert entry["archetype"], f"{entry['slug']} has no archetype line"
+            assert entry["note"], f"{entry['slug']} has no note"
+            assert len(entry["axes"]) == 5
+            assert entry["grade"] in list("ABCDF")
+            assert isinstance(entry["severity_counts"], dict)
+            # Only a flawless agent may omit a top risk.
+            assert entry["top_risk"] or entry["score"] == 100
+
+    def test_grades_discriminate_across_the_archetypes(self):
+        """A leaderboard where everything is F tells the reader nothing."""
+        grades = {e["grade"] for e in client.get("/api/examples").json()}
+        assert len(grades) >= 3
+
+    def test_example_listing_is_cached_but_reflects_edits(self, tmp_path):
+        from app.main import EXAMPLES_DIR, _examples_signature
+
+        first = _examples_signature()
+        assert client.get("/api/examples").json() == client.get("/api/examples").json()
+        # The signature is mtime-based, so touching a file must invalidate it.
+        target = next(EXAMPLES_DIR.glob("*.json"))
+        target.touch()
+        assert _examples_signature() != first
+
     def test_example_payload_loads_into_the_form(self):
         data = client.get("/api/examples/hardened_docs_agent").json()
         assert data["system_prompt"]
@@ -167,3 +196,11 @@ class TestApp:
 
     def test_openapi_schema_is_available(self):
         assert client.get("/api/openapi.json").status_code == 200
+
+    def test_gallery_page_is_served(self):
+        res = client.get("/gallery")
+        assert res.status_code == 200
+        assert "leaderboard" in res.text.lower()
+
+    def test_scanner_links_to_the_gallery(self):
+        assert '/gallery' in client.get("/").text

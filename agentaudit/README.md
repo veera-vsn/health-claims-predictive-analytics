@@ -7,18 +7,18 @@ axes, a ranked findings list with a concrete fix for each, and a shareable score
 in about 20 seconds.
 
 ```
-  13/100  F · Critically exposed
+  15/100  F · Critically exposed
   Critically exposed — 7 unmitigated injection classes.
 
   Injection Resistance   ░░░░░    0
   Tool Scoping           ░░░░░    0
   Exfil Surface          ░░░░░    0
-  Secret Handling        ▓▓░░░   48
+  Secret Handling        ▓▓▓░░   66
   Output Validation      ▓▓░░░   37
 
    CRITICAL  Lethal trifecta: private data + untrusted content + outbound channel
    CRITICAL  `run_shell_command` takes unconstrained input for a privileged action
-   CRITICAL  OpenAI-style API key hardcoded in the system prompt
+      HIGH  credential hardcoded in the system prompt
 ```
 
 ## Why it is built this way
@@ -81,8 +81,36 @@ array works too.
 | Output validation | 15% | Does generated text reach a shell, a SQL engine, or a browser unchecked? |
 
 Each axis starts at 100; findings subtract 40 (critical), 22 (high), 12 (medium), or 5
-(low), floored at zero. The composite is the weighted sum. Grades: A ≥ 90, B ≥ 80,
-C ≥ 70, D ≥ 60, F below.
+(low), floored at zero. The composite is the weighted sum.
+
+Grades: **A ≥ 90 · B ≥ 75 · C ≥ 60 · D ≥ 40 · F below**. The bands are wide at the
+bottom on purpose. They were calibrated against the eight archetypes in `examples/`: on
+an evenly-spaced scale six of the eight landed in F, which makes the letter meaningless.
+A config with a good trust-boundary prompt and one unscoped tool is not in the same
+state as one with a hardcoded credential and a free-form shell, and the grade should say
+so.
+
+## The gallery
+
+`/gallery` scores eight common agent architectures and ranks them worst-first — a
+leaderboard of *architectures*, never of people or of anyone's production system. Every
+entry is a reference implementation of a widely-published pattern, written for this repo
+and reproducible with `python -m app.cli examples/<slug>.json`.
+
+| | Architecture | Score |
+|---|---|---|
+| 1 | Vulnerable support agent | 15 · F |
+| 2 | Browser shopping agent | 35 · F |
+| 3 | Email triage assistant | 39 · F |
+| 4 | MCP filesystem server | 49 · D |
+| 5 | RAG support bot | 55 · D |
+| 6 | Autonomous coding agent | 56 · D |
+| 7 | SQL analyst agent | 81 · B |
+| 8 | Hardened docs agent | 100 · A |
+
+The pattern worth noticing: the failures cluster in *architecture*, not prose. The
+coding agent and the SQL analyst both have careful trust-boundary prompts; what sinks
+them is a free-form `command` and a free-form `sql`. Prompt wording is the cheap half.
 
 ### The injection probe library
 
@@ -115,6 +143,7 @@ complete the trifecta — bounded channels are not exfiltration primitives.
 | `POST /api/card` | Stateless PNG render, for CI jobs that want the image in one call. |
 | `GET /r/{scan_id}` | Share page with Open Graph tags for link unfurls. |
 | `GET /card/{scan_id}.png` | The 1200×630 score card. |
+| `GET /gallery` | The leaderboard of scored architectures. |
 | `GET /api/examples` | The bundled example agents, with live scores. |
 | `GET /api/docs` | OpenAPI docs. |
 
@@ -158,10 +187,31 @@ app/
   card.py         render the 1200x630 share card with Pillow
   cli.py          CI entry point
   main.py         FastAPI service
-  static/         the single-page frontend
-examples/         a vulnerable and a hardened agent, used by the UI and the tests
-tests/            114 tests across the engine, API, and CLI
+  static/         the scanner page and the gallery
+examples/         eight agent archetypes, used by the UI, the gallery, and the tests
+tests/            121 tests across the engine, API, and CLI
+Dockerfile        production image
+.github/          a copy-pasteable CI workflow
 ```
+
+## Deploying
+
+```bash
+docker build -t agentaudit .
+docker run -p 8000:8000 -e AGENTAUDIT_HOST=agentaudit.dev agentaudit
+```
+
+`AGENTAUDIT_HOST` is the hostname stamped on share cards and Open Graph URLs; set it to
+your real domain or link unfurls will point at the placeholder. `PORT` is honoured for
+platforms that inject one.
+
+The image installs `fonts-dejavu-core` because `card.py` looks for DejaVu first and
+falls back to a bitmap font that renders badly. Everything else is a wheel, so there is
+no build toolchain in the image.
+
+Share links are held per-process in memory, so if you run multiple workers a link is
+only resolvable by the worker that created it. For a single-box launch that is fine;
+scale out and you need shared storage or sticky sessions.
 
 ## Limitations
 

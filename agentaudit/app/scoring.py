@@ -16,11 +16,17 @@ from .normalize import Tool, parse_tools
 from .rules import MODULES
 
 #: score floor -> (grade, headline verdict)
+#:
+#: Calibrated against the archetypes in examples/. With an evenly-spaced scale
+#: almost every realistic agent landed in F, which makes the letter useless --
+#: a config with a good trust-boundary prompt and one unscoped tool is not in
+#: the same state as one with a hardcoded key and a free-form shell. The bands
+#: are widened at the bottom so F means "catastrophic", not "imperfect".
 GRADE_BANDS: tuple[tuple[int, str, str], ...] = (
     (90, "A", "Hardened"),
-    (80, "B", "Solid, with gaps"),
-    (70, "C", "Exploitable"),
-    (60, "D", "Weak"),
+    (75, "B", "Solid, with gaps"),
+    (60, "C", "Exploitable"),
+    (40, "D", "Weak"),
     (0, "F", "Critically exposed"),
 )
 

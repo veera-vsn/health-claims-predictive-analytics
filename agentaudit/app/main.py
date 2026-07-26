@@ -12,6 +12,7 @@ import os
 import threading
 import time
 from collections import deque
+from functools import lru_cache
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request, Response
@@ -178,8 +179,13 @@ async def share_page(scan_id: str) -> HTMLResponse:
     return HTMLResponse(page)
 
 
-@app.get("/api/examples")
-async def list_examples() -> list[dict]:
+def _examples_signature() -> tuple:
+    """Cache key that changes whenever an example file is edited."""
+    return tuple(sorted((p.name, p.stat().st_mtime_ns) for p in EXAMPLES_DIR.glob("*.json")))
+
+
+@lru_cache(maxsize=4)
+def _score_examples(_signature: tuple) -> list[dict]:
     out = []
     for path in sorted(EXAMPLES_DIR.glob("*.json")):
         spec = json.loads(path.read_text())
@@ -188,12 +194,32 @@ async def list_examples() -> list[dict]:
             {
                 "slug": path.stem,
                 "name": spec.get("name", path.stem),
+                "archetype": spec.get("archetype", ""),
                 "note": spec.get("note", ""),
                 "score": result.score,
                 "grade": result.grade,
+                "verdict": result.verdict,
+                "headline": result.headline(),
+                "unmitigated_probes": result.unmitigated_probe_count,
+                "severity_counts": result.severity_counts,
+                "tool_count": result.tool_count,
+                "top_risk": result.top_risk.title if result.top_risk else None,
+                "axes": [{"label": a.label, "score": a.score} for a in result.axes],
             }
         )
+    # Worst first -- the gallery is a leaderboard of failures, not a ranking of wins.
+    out.sort(key=lambda e: e["score"])
     return out
+
+
+@app.get("/api/examples")
+async def list_examples() -> list[dict]:
+    return _score_examples(_examples_signature())
+
+
+@app.get("/gallery", response_class=HTMLResponse)
+async def gallery() -> FileResponse:
+    return FileResponse(STATIC_DIR / "gallery.html")
 
 
 @app.get("/api/examples/{slug}")

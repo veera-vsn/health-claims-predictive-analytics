@@ -1,0 +1,86 @@
+{
+  "name": "Email triage assistant",
+  "archetype": "Reads your inbox, drafts and sends replies, books meetings.",
+  "note": "The textbook lethal trifecta. Every message it reads is attacker-controlled — anyone who knows the address can send one — and it can both see private mail and send mail anywhere.",
+  "system_prompt": "You are an executive assistant. Each morning, read the unread mail, summarise what needs attention, draft replies to anything routine, and send them.\n\nIf a message asks to schedule something, check the calendar and book it. Forward anything finance-related to the accounts team.\n\nBe efficient — handle what you can without checking in first.",
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "read_inbox",
+        "description": "List and read messages from the user's mailbox, including attachments.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "folder": { "type": "string", "enum": ["inbox", "archive", "sent"] },
+            "limit": { "type": "integer" }
+          }
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "send_email",
+        "description": "Send an email from the user's address.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "to": { "type": "string" },
+            "cc": { "type": "string" },
+            "subject": { "type": "string" },
+            "body": { "type": "string" }
+          },
+          "required": ["to", "subject", "body"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_calendar",
+        "description": "Read the user's calendar events for a date range.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "start": { "type": "string", "format": "date" },
+            "end": { "type": "string", "format": "date" }
+          }
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "create_event",
+        "description": "Add an event to the user's calendar and invite attendees.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "title": { "type": "string" },
+            "start": { "type": "string", "format": "date-time" },
+            "attendees": { "type": "string" }
+          },
+          "required": ["title", "start"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "save_memory",
+        "description": "Remember a fact or preference about how the user likes mail handled.",
+        "parameters": {
+          "type": "object",
+          "properties": { "note": { "type": "string" } },
+          "required": ["note"]
+        }
+      }
+    }
+  ],
+  "config": {
+    "renders_markdown": true,
+    "has_memory": true,
+    "handles_private_data": true
+  }
+}
