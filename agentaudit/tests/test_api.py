@@ -204,3 +204,26 @@ class TestApp:
 
     def test_scanner_links_to_the_gallery(self):
         assert '/gallery' in client.get("/").text
+
+    def test_stylesheet_is_served(self):
+        res = client.get("/static/style.css")
+        assert res.status_code == 200
+        assert "text/css" in res.headers["content-type"]
+        assert "--paper" in res.text
+
+    @pytest.mark.parametrize("path", ["/", "/gallery"])
+    def test_both_pages_load_the_shared_stylesheet(self, path):
+        assert '/static/style.css' in client.get(path).text
+
+    @pytest.mark.parametrize("path", ["/", "/gallery"])
+    def test_both_pages_support_theme_switching(self, path):
+        body = client.get(path).text
+        assert 'data-theme' in body
+        assert 'id="theme"' in body
+
+    def test_share_page_keeps_the_stylesheet_after_bootstrap_injection(self):
+        """The share route string-replaces into index.html; the <link> must survive."""
+        scan = client.post("/api/scan", json=VULNERABLE).json()
+        page = client.get(scan["share_path"]).text
+        assert "/static/style.css" in page
+        assert "window.__RESULT__" in page

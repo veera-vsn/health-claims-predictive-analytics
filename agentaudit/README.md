@@ -187,9 +187,9 @@ app/
   card.py         render the 1200x630 share card with Pillow
   cli.py          CI entry point
   main.py         FastAPI service
-  static/         the scanner page and the gallery
+  static/         the scanner page, the gallery, and the shared stylesheet
 examples/         eight agent archetypes, used by the UI, the gallery, and the tests
-tests/            121 tests across the engine, API, and CLI
+tests/            127 tests across the engine, API, and CLI
 Dockerfile        production image
 .github/          a copy-pasteable CI workflow
 ```

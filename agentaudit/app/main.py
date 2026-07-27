@@ -17,6 +17,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from .card import render_card
 from .models import ScanRequest
@@ -41,6 +42,9 @@ app = FastAPI(
     docs_url="/api/docs",
     openapi_url="/api/openapi.json",
 )
+
+# Both pages share one stylesheet rather than duplicating the design system.
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
 # --- rate limiting ---------------------------------------------------------
